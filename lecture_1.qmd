@@ -1,0 +1,118 @@
+---
+title: "week 1 - lecture 1"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+# load packages
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+```
+
+```{r}
+# untidy data ----
+temp_data_wide <- tribble( # can write out dataframe structure
+  ~date, ~station1, ~station2,  ~station3,
+  "2023-10-01", 30.1, 29.8,  31.2,
+  "2023-11-01", 28.6, 29.1,  33.4,
+  "2023-12-01", 29.9, 28.5,  32.3
+)
+
+# make tidy ----
+temp_data_long <- temp_data_wide |> 
+  pivot_longer(cols = starts_with("station"), # choose column names that start with the word 'station'
+               names_to = "station_id", 
+               values_to = "temp_c")
+```
+
+## pivot longer
+```{r}
+temp_data_long <- temp_data_wide |> 
+  pivot_longer(cols = starts_with("station"),
+               names_to = "station_id",
+               values_to = "temp_c")
+
+print(temp_data_long)
+```
+
+## Plot 1
+```{r}
+ggplot(data = penguins,
+       mapping = aes(x = bill_length_mm,
+                     y = bill_depth_mm))
+
+# mapping color globally 
+penguins %>% 
+  ggplot(aes(x = bill_length_mm,
+             y = bill_depth_mm,
+             color = species)) + # global
+  geom_point() +
+  scale_colour_manual(values = c("darkorange", "red", "purple"))
+
+# mapping color locally 
+ggplot(na.omit(penguins),
+         aes(x = bill_length_mm,
+             y = bill_depth_mm)) +
+  geom_point(aes(color = species)) + # local
+  geom_smooth(method = "lm") # make line in all of data set
+
+
+# plotting continuous variabe
+ggplot(penguins,
+         aes(x = body_mass_g,
+             y = flipper_length_mm,
+             color = body_mass_g)) + # global
+  geom_point() +
+  scale_color_gradient(low = "#132843", # create diverging palettes
+                       high = "#F7DD4C")
+```
+
+
+## Plot 2
+```{r}
+ggplot(penguins,
+       aes(x = species)) +
+  geom_bar()
+```
+
+```{r}
+penguins_summaey <- penguins %>% 
+  count(species)
+
+ggplot(penguins_summaey, aes(x = species, 
+                             y = n)) +
+  geom_bar(stat = "identity") # make height = to value
+```
+
+# overside default stat mapping
+```{r}
+ggplot(penguins,
+       aes(x = species,
+           y = after_stat(prop),
+           group = 1)) + # plot proportion
+  geom_bar()
+
+```
+
+position adjustments 
+```{r}
+ggplot(penguins,
+       aes(x = species,
+           fill = island)) +
+  geom_bar(position = "fill") # or try single"
+
+```
+
+```{r}
+ggplot(penguins,
+       aes(x = species)) +
+  geom_bar() +
+  coord_flip() + # make x axis vertically
+  theme_classic()
+
+```
+
+
