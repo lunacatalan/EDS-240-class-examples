@@ -7,6 +7,7 @@ editor_options:
 ---
 
 # load packages
+
 ```{r}
 library(tidyverse)
 library(palmerpenguins)
@@ -29,6 +30,7 @@ temp_data_long <- temp_data_wide |>
 ```
 
 ## pivot longer
+
 ```{r}
 temp_data_long <- temp_data_wide |> 
   pivot_longer(cols = starts_with("station"),
@@ -39,6 +41,7 @@ print(temp_data_long)
 ```
 
 ## Plot 1
+
 ```{r}
 ggplot(data = penguins,
        mapping = aes(x = bill_length_mm,
@@ -70,8 +73,8 @@ ggplot(penguins,
                        high = "#F7DD4C")
 ```
 
-
 ## Plot 2
+
 ```{r}
 ggplot(penguins,
        aes(x = species)) +
@@ -88,6 +91,7 @@ ggplot(penguins_summaey, aes(x = species,
 ```
 
 # overside default stat mapping
+
 ```{r}
 ggplot(penguins,
        aes(x = species,
@@ -97,7 +101,8 @@ ggplot(penguins,
 
 ```
 
-position adjustments 
+position adjustments
+
 ```{r}
 ggplot(penguins,
        aes(x = species,
@@ -114,5 +119,3 @@ ggplot(penguins,
   theme_classic()
 
 ```
-
-
