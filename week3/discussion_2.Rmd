@@ -1,5 +1,4 @@
-
-Installing packages: 
+Installing packages:
 
 ```{r}
 # install.packages("chron") # for working with dates / times
@@ -14,5 +13,241 @@ Installing packages:
 ```
 
 # Source Key by running:
+
 `source(here::here("week3", "KEYS.R"))`
+
+# Choosing the right graphic form
+
+Exercise: want to compare unemployment rates of 5 countries A, B, C, D, E
+
+Hierarchy of elementary of perceptual tasks - viewer performs a mental-visual tasks to extract the values of real variables represented on most graphs - successful charts are constructed higher in the hierarchy\
+- Bad at extracting exact values: hue / shade ; bad at looking at area - Bette at perceiving rectangles than circles
+
+Caveats: doesn't include maps - lower scale methods can be appropriate when revealing **general patterns**
+
+PURPOSE!!
+
+How best to represent your data to serve purpose?
+
+Things to think about...
+1. Tasks you want to enable or messages you want to convey
+2. Number of variables / data points / data types
+
+Messages 
+- primary / secondary insights of graphic 
+- identify elemtnary perceptual tasks
+
+# Visualizing Distributions 
+
+Visualizing the SPREAD
+- histograms
+- density
+- ridgeline plots
+- box plots
+- violin plots 
+
+# Set up 
+```{r}
+# load packages 
+library(tidyverse)
+library(chron) # date time stuff
+library(naniar) # missing data
+
+# import data ----
+mko <- read_csv("https://portal.edirepository.org/nis/dataviewer?packageid=knb-lter-sbc.2007.17&entityid=02629ecc08a536972dec021f662428aa")
+```
+
+## Wrangle
+```{r}
+mko_clean <- mko %>% 
+  select(year, month, day, decimal_time, Temp_bot) %>%   # select columns
+  unite(date, # name of new column
+        year, month, day, # columns to combine
+        sep = "-", # separator
+        remove = FALSE) %>%  # keep the columns we united
+  mutate(time = times(decimal_time)) %>% 
+  unite(date_time,
+        date, time, 
+        sep = " ") %>% 
+  mutate(date_time = as.POSIXct(date_time, "%Y-%m-%d %H:%M:%S", # set to date time object
+                                tz = "GMT"), # timezone
+         year = as.factor(year),
+         month = as.factor(month),
+         day = as.numeric(day)) %>% 
+  mutate(month_name = as.factor(month.name[month])) %>%  # index using the number in the month column 
+  naniar::replace_with_na(replace = list(Temp_bot = 9999)) # assign values we want to replace with NA values
+
+# look at structure using str()
+```
+
+# Plotting Histograms 
+- shows the frequency of values in each range
+```{r}
+mko_clean %>% 
+  mutate(month_name = factor(month_name, # assign column of interest
+                             levels = month.name)) %>%  # arrange the months the same as this
+  ggplot(aes(x = Temp_bot, fill = month_name)) +
+  geom_histogram(position = "identity", # each bar on the x-axis
+                 alpha = 0.5 # make transparent 
+                 ) 
+
+mko_clean %>% 
+  mutate(month_name = factor(month_name, # assign column of interest
+                             levels = month.name)) %>%  # arrange the months the same as this
+  ggplot(aes(x = Temp_bot)) +
+  geom_histogram(position = "identity" # each bar on the x-axis
+                 ) +
+  facet_wrap(~month_name)
+
+# feweer groups =======
+mko_clean %>% 
+  mutate(month_name = factor(month_name, # assign column of interest
+                             levels = month.name)) %>%  # arrange the months the same as this
+  filter(month_name %in% c("April", "June", "October")) %>% 
+  ggplot(aes(x = Temp_bot, fill = month_name)) +
+  geom_histogram(position = "identity", # each bar on the x-axis
+                 color = "black",
+                 alpha = 0.5)
+```
+# Density plots
+- proportion of values in each range 
+- area under the curve = 1
+```{r}
+mko_clean %>% 
+  mutate(month_name = factor(month_name, # assign column of interest
+                             levels = month.name)) %>%  # arrange the months the same as this
+  filter(month_name %in% c("April", "June", "October")) %>% 
+  ggplot(aes(x = Temp_bot, fill = month_name)) +
+  geom_density(position = "identity", # each bar on the x-axis
+                 color = "black",
+                 alpha = 0.5,
+               adjust = 0.5) + # adjusts the smoothing (1 is the most smooth)
+  scale_fill_manual(values = c("midnightblue", "orange", "pink"))
+```
+## hist vs density 
+```{r}
+dummy_data <- data.frame(value = c(rnorm(n = 100, mean = 5),
+                                    rnorm(n = 200, mean = 10)),
+                         group = rep(c("A", "B"),
+                                     times = c(100, 200)))
+
+# hist =====
+ggplot(data = dummy_data, aes(x = value,
+                       fill = group)) +
+  geom_histogram(position = "identity", alpha = 0.7) +
+  geom_rug(aes(color = group), alpha = 0.7)
+
+# density =====
+ggplot(data = dummy_data, aes(x = value,
+                       fill = group)) +
+  geom_density(position = "identity", alpha = 0.7) +
+  geom_rug(aes(color = group), alpha = 0.7)
+```
+## ridgeline
+
+```{r}
+ggplot(mko_clean, 
+       aes(x = Temp_bot, y = month_name, 
+           fill = after_stat(x))) + # fill using the variable you assigned as x
+  ggridges::geom_density_ridges_gradient(rel_min_height = 0.001, # length of tails
+                                         scale = 3) + # overlap
+  scale_y_discrete(limits = rev(month.name)) + # reorder months from January to December
+  scale_fill_gradientn(colors = c("midnightblue", "lightblue", "white", "orange", "darkred"))
+
+# can add jitter points to see sample size
+```
+## Boxplots
+```{r}
+ggplot(mko_clean, 
+       aes(x = month_name,
+           y = Temp_bot,
+           fill = month_name)) +
+  geom_boxplot() +
+  scale_x_discrete(limits = rev(month.name)) + # reorder by month name
+  coord_flip() +
+  gghighlight::gghighlight(month_name == "October") + # highlight just one month
+  theme(
+    legend.position = "none" # remove legend
+  )
+
+# jitter and dodge
+library(palmerpenguins)
+
+penguins %>% 
+  mutate(year = as.factor(year)) %>% 
+  ggplot(aes(x = species, y = body_mass_g, color = year)) +
+  geom_boxplot() +
+  geom_point(alpha = 0.5, 
+             position = position_jitterdodge(jitter.width = 0.2)) +
+  coord_flip()
+```
+
+## violin plots 
+- distributino of a numeric variable for one or several groups 
+```{r}
+ggplot(mko_clean, 
+       aes(x = month_name, y = Temp_bot)) +
+  geom_violin() +
+  geom_boxplot(color = "gray", alpha = 0.5, width = 0.1,
+               outlier.color = "black") +
+  scale_x_discrete(limits = rev(month.name)) +
+  coord_flip()
+
+
+# half and half 
+ggplot(data = penguins,
+       aes(x = species, 
+           y = bill_length_mm,
+           fill = species)) +
+  see::geom_violindot(size_dots = 5, alpha = 0.5)
+```
+# More charts!
+
+## Line graphs 
+- avoid spaghetti plots 
+- cutting the y-axis
+- adjusting aspect ratio 
+
+## Area charts
+- 1 vs. multiple groups
+- how to interpret
+- stacked vs proportional 
+
+```{r}
+library(tidycensus)
+library(janitor)
+library(gghighlight)
+
+# load API key
+source(here::here("week3", "KEYS.R"))
+census_api_key(censusKEY)
+
+lyme <- read_csv(here::here("week3", "data", "LD-Case-Counts-by-County-01-20.csv"))
+```
+## Wrangle
+```{r}
+# lyme data ----
+lyme_clean <- lyme %>% 
+  clean_names() %>% 
+  rename(county = ctyname,
+         state = stname,
+         status = ststatus) %>% 
+  pivot_longer(cols = 6:25,
+               names_to = "city_year",
+               values_to = "reported_cases") %>% 
+  mutate(year = as.factor(str_remove(city_year, "cases")))
+
+# calculate the total cases by state
+lyme_by_state <- lyme_clean %>% 
+  group_by(state) %>% 
+  summarize(total_cases = sum(reported_cases))
+
+us_state_pop <- get_estimates(geography = "state",
+                              product = "population",
+                              year = 2019) %>% 
+  filter(variable == "POP") %>% 
+  select(state = NAME, population = value)
+
+lyme_pop <- left_join(lyme_by_state, us_state_pop) 
+```
 
