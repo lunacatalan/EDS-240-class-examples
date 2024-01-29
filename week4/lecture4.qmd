@@ -1,0 +1,270 @@
+# Week 4: Lecture
+
+```{r}
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                    setup                                 ----
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#..........................load packages.........................
+library(tidyverse)
+library(ggalt)
+library(ggExtra)
+library(ggdensity)
+
+#..........................import data...........................
+jobs <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-05/jobs_gender.csv")
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                wrangle data                              ----
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+jobs_clean <- jobs |> 
+  
+  # add cols (needed for dumbbell plot) ----
+  mutate(percent_male = 100 - percent_female, # % of females within each industry was already included
+         difference_earnings = total_earnings_male - total_earnings_female) |>  # diff in earnings between M & F
+  
+  # rearrange columns ----
+  relocate(year, major_category, minor_category, occupation,
+          total_workers, workers_male, workers_female,
+          percent_male, percent_female,
+          total_earnings, total_earnings_male, total_earnings_female, difference_earnings,
+          wage_percent_of_male) |> 
+  
+  # drop rows with missing earning data ----
+  drop_na(total_earnings_male, total_earnings_female) |> 
+  
+  # make occupation a factor ----
+  mutate(occupation = as.factor(occupation)) |> 
+  
+  # ---- this next step is for creating our dumbbell plots ----
+
+  # classify jobs by percentage male or female ----
+  mutate(group_label = case_when(
+    percent_female >= 75 ~ "Occupations that are 75%+ female",
+    percent_female >= 45 & percent_female <= 55 ~ "Occupations that are 45-55% female",
+    percent_male >= 75 ~ "Occupations that are 75%+ male"
+  )) 
+```
+## Bar Plots
+```{r}
+jobs_clean %>% 
+  filter(year == 2016) %>% 
+  slice_max(order_by = total_earnings,
+            n = 10) %>% 
+  ggplot(aes(x = fct_reorder(occupation, total_earnings), # set order or occupation by total earnings
+             y = total_earnings)) +
+  geom_col() +
+  geom_text(aes(label = scales::dollar(total_earnings)), # exact values of bars at the end of the columns
+                hjust = 1.2, color = "white") +
+  scale_y_continuous(labels = scales::label_currency(accuracy = 1, # add $ before value
+                                                     scale = 0.001, # multiply values by 0.001
+                                                     suffix = "k")) + # add k at the end
+  coord_flip() # make occupations fit 
+
+
+# 2 groups 
+jobs_clean %>% 
+  filter(year == 2016) %>% 
+  slice_max(order_by = total_earnings,
+            n = 10) %>% 
+  pivot_longer(cols = c(total_earnings_male, total_earnings_female),
+               names_to = "group", 
+               values_to = "earnings_by_group") %>% 
+  mutate(sex = str_remove(group, pattern = "total_earnings_")) %>% 
+  ggplot(aes(x = fct_reorder(occupation, earnings_by_group), # set order or occupation by total earnings
+             y = earnings_by_group,
+             fill = sex)) +
+  geom_col(position = position_dodge()) +
+  scale_y_continuous(labels = scales::label_currency(accuracy = 1, # add $ before value
+                                                     scale = 0.001, # multiply values by 0.001
+                                                     suffix = "k")) + # add k at the end
+  coord_flip() # make occupations fit 
+```
+
+
+## Lollipop plots
+```{r}
+jobs_clean %>% 
+  filter(year == 2016) %>% 
+  slice_max(order_by = total_earnings,
+            n = 10) %>% 
+  ggplot(aes(x = fct_reorder(occupation, total_earnings), 
+             y = total_earnings)) +
+  ggalt::geom_lollipop() +
+  geom_text(aes(label = scales::dollar(total_earnings)), # exact values of bars at the end of the columns
+                hjust = -0.2) +
+  scale_y_continuous(labels = scales::label_currency(accuracy = 1, # add $ before value
+                                                     scale = 0.001, # multiply values by 0.001
+                                                     suffix = "k"), # add k at the end
+                     limits = c(0, 250000)) +
+  coord_flip()
+
+# 2 groups --- making our own plots
+jobs_clean %>% 
+  filter(year == 2016) %>% 
+  slice_max(order_by = total_earnings,
+            n = 10) %>% 
+  pivot_longer(cols = c(total_earnings_male, total_earnings_female),
+               names_to = "group", 
+               values_to = "earnings_by_group") %>% 
+  mutate(sex = str_remove(group, pattern = "total_earnings_")) %>% 
+  ggplot(aes(x = fct_reorder(occupation, earnings_by_group), # set order or occupation by total earnings
+             y = earnings_by_group,
+             color = sex)) +
+  geom_point(position = position_dodge(width = 0.5)) + # offset the points around grid line
+  geom_linerange(aes(xmin = occupation, xmax = occupation,
+                     ymin = 0, ymax = earnings_by_group),
+                 position = position_dodge(width = 0.5)) + # to make lollipop 
+  coord_flip()
+
+```
+
+# Dumbbell plot
+
+Visualize clear diferences 
+```{r}
+
+#....guarantee the same random samples each time we run code.....
+set.seed(0)
+
+#.........get 10 random jobs that are 75%+ female (2016).........
+f75 <- jobs_clean |> 
+  filter(year == 2016, group_label == "Occupations that are 75%+ female") |> 
+  slice_sample(n = 10)
+
+#..........get 10 random jobs that are 75%+ male (2016)..........
+m75 <- jobs_clean |> 
+  filter(year == 2016, group_label == "Occupations that are 75%+ male") |> 
+  slice_sample(n = 10)
+
+#........get 10 random jobs that are 45-55%+ female (2016).......
+f50 <- jobs_clean |> 
+  filter(year == 2016, group_label == "Occupations that are 45-55% female") |> 
+  slice_sample(n = 10)
+
+#.......combine dfs & relevel factors (for plotting order).......
+subset_jobs <- rbind(f75, m75, f50) |> 
+  mutate(group_label = fct_relevel(group_label, "Occupations that are 75%+ female", 
+                                   "Occupations that are 45-55% female", "Occupations that are 75%+ male")) 
+
+# plotting dumbbell
+ggplot(subset_jobs) + 
+  geom_segment(aes(x = total_earnings_female, xend = total_earnings_male,
+               y = fct_reorder(occupation, total_earnings), yend = occupation)) +
+  geom_point(aes(x = total_earnings_male, y = occupation), 
+             color = "purple") +
+  geom_point(aes(x = total_earnings_female, y = occupation), 
+             color = "pink") +
+  facet_wrap(~group_label, nrow = 4, 
+             scales = "free_y") # only plots the groups on the facet that they belong by
+
+```
+# Visualizing Nmerical Data
+
+```{r}
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##                                    setup                                 ----
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#..........................load packages.........................
+library(metajam) 
+library(tidyverse)
+
+#...................download data from DataOne...................
+download_d1_data("https://cn.dataone.org/cn/v2/resolve/https%3A%2F%2Fpasta.lternet.edu%2Fpackage%2Fdata%2Feml%2Fknb-lter-hbr%2F208%2F9%2F3b3cf7ea447cb875d7c7d68ebdfd24c7",
+                 path = here::here("week4")) 
+
+#  ~ NOTE: I recommend renaming the downloaded folder to 'data/' so that it's ignored by .gitignore! ~
+
+#....................read in downloaded files....................
+stream_chem_all <- read_d1_files(here::here("week4", "data"))
+
+#........................get the data file.......................
+stream_chem_data <- stream_chem_all$data
+```
+
+```{r}
+# basic Scatterplot ----
+
+stream_chem_data %>% 
+  filter(waterYr == 2021) %>% 
+  ggplot(aes(x = DOC, y = pH)) +
+  geom_point(alpha = 0.5) +
+  geom_rug() # represent WHERE the points are along the margins
+
+
+# ggExtra ----
+
+# step 1: save plot
+p1 <- stream_chem_data %>% 
+  filter(waterYr == 2021) %>% 
+  ggplot(aes(x = DOC, y = pH)) +
+  geom_point(alpha = 0.5)
+
+# step 2: make plots
+ggExtra::ggMarginal(p1, type = "histogram")
+ggExtra::ggMarginal(p1, type = "density", 
+                    margins = "x") # just distribution along the x axis
+ggExtra::ggMarginal(p1, type = "boxplot")
+
+
+# ggExtra mulitiple gorups ----
+p2 <- stream_chem_data %>% 
+  filter(waterYr == 2021) %>% 
+  ggplot(aes(x = DOC, y = pH, 
+             color = site)) +
+  geom_point(alpha = 0.5) +
+  theme(legend.position = "bottom")
+
+# step 2: make plots
+ggExtra::ggMarginal(p2, type = "density", groupFill = TRUE,
+                    groupColour = TRUE)
+```
+# Trend lines
+```{r}
+stream_chem_data %>% 
+  filter(waterYr == 2021) %>%
+  filter(site == "W8") %>% 
+  ggplot(aes(x = DOC, y = pH)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE)
+
+```
+# Bubble charts 
+
+...bubble butt...bubble bubble bubble butt...
+
+- Encode based on position and size
+- Scale bubble size by AREA not by radius
+
+```{r}
+stream_chem_data %>% 
+  filter(waterYr == 2021) %>% 
+  ggplot(aes(x = DOC, y = pH, color = site,
+             size = Al_ICP)) +
+  geom_point(alpha = 0.5) +
+  scale_size(range = c(1, 10))
+
+
+```
+The problem of overplotting...
+
+```{r}
+ggplot(stream_chem_data, aes(x = SO4, y = pH)) +
+  geom_point(size = 0.5, alpha = 0.5)
+
+# heat map ----
+ggplot(stream_chem_data, aes(x = SO4, y = pH)) +
+  geom_bin2d() +
+  scale_fill_viridis_c()
+
+ggplot(stream_chem_data, aes(x = SO4, y = pH)) +
+  geom_hex() +
+  scale_fill_viridis_c() +
+  guidess(fill = guide_colorbar(title = "Count"))
+
+
+```
+
