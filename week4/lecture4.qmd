@@ -263,7 +263,9 @@ ggplot(stream_chem_data, aes(x = SO4, y = pH)) +
 ggplot(stream_chem_data, aes(x = SO4, y = pH)) +
   geom_hex() +
   scale_fill_viridis_c() +
-  guidess(fill = guide_colorbar(title = "Count"))
+  guides(fill = guide_colorbar(title = "Count",
+                                barwidth = 1, 
+                                barheight = 15))
 
 
 ```
