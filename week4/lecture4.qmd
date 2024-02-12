@@ -221,6 +221,7 @@ p2 <- stream_chem_data %>%
 ggExtra::ggMarginal(p2, type = "density", groupFill = TRUE,
                     groupColour = TRUE)
 ```
+
 # Trend lines
 ```{r}
 stream_chem_data %>% 
@@ -269,4 +270,11 @@ ggplot(stream_chem_data, aes(x = SO4, y = pH)) +
 
 
 ```
+
+# Data visualization workflow 
+1. what is the question I want my audience to think about when viewing this figure?
+2. What are 2 - 3 ways I can make this question clear to the audience 
+3. Is the answer to that question clear in the fitures I've produced?
+
+Brighter colors; gray background is nice!
 
