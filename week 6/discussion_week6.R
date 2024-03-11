@@ -34,7 +34,7 @@ library(monochromeR)
 library(showtext)
 library(ggtext)
 library(ggrepel)
-library(googlesheets4)
+#library(googlesheets4)
 
 # import google fonts 
 font_add_google(name = "Josefin Sans",
