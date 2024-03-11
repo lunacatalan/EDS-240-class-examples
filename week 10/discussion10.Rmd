@@ -163,12 +163,15 @@ salary_rank_by_year %>%
              size = 6) +
   geom_bump(linewidth = 0.5) +
   geom_text(data = salary_rank_by_year %>% 
-              filter(year == 2016, 
+              filter(year == 2013, 
                      occupation %in% top2016),
             aes(label = occupation),
             family = "oxygen",
             fontface = "bold",
-            hjust = 1)
+            hjust = 1,
+            nudge_x = -0.1) +
+  scale_y_reverse() +
+  scale_color_manual(values = occupation_colors)
   
 ```
 
